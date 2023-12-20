@@ -1,5 +1,7 @@
-Config = {}
-
+Config = Config or {}
+HD = HD or {}
+Config.UseTarget = GetConvar('UseTarget', 'false') == 'true' -- Use qb-target interactions (don't change this, go to your server.cfg and add setr UseTarget true)
+Config.DrawText = '[E] - Talk to NPC'
 Config.npcs = {
     {
         name = "Manav Hilmiye",

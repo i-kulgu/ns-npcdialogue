@@ -1,6 +1,6 @@
+-- Functions
 
-
-function GetOffsetFromCoordsAndHeading(coords, heading, offsetX, offsetY, offsetZ)
+local function GetOffsetFromCoordsAndHeading(coords, heading, offsetX, offsetY, offsetZ)
     local headingRad = math.rad(heading)
     local x = offsetX * math.cos(headingRad) - offsetY * math.sin(headingRad)
     local y = offsetX * math.sin(headingRad) + offsetY * math.cos(headingRad)
@@ -12,14 +12,13 @@ function GetOffsetFromCoordsAndHeading(coords, heading, offsetX, offsetY, offset
         coords.z + z,
         heading
     )
-    
+
     return worldCoords
 end
 
-function CamCreate(npc)
+local function CamCreate(npc)
 	cam = CreateCam('DEFAULT_SCRIPTED_CAMERA')
 	local coordsCam = GetOffsetFromCoordsAndHeading(npc, npc.w, 0.0, 0.6, 1.60)
-    print(coordsCam)
 	local coordsPly = npc
 	SetCamCoord(cam, coordsCam)
 	PointCamAtCoord(cam, coordsPly['x'], coordsPly['y'], coordsPly['z']+1.60)
@@ -28,36 +27,50 @@ function CamCreate(npc)
 
 end
 
-function DestroyCamera()
+local function DestroyCamera()
     RenderScriptCams(false, true, 500, 1, 0)
     DestroyCam(cam, false)
 end
 
--- NPC'leri spawn et
-Citizen.CreateThread(function()
-    for _, npc in ipairs(Config.npcs) do
-        RequestModel(GetHashKey(npc.ped))
-        print(npc.ped)
-        print(npc.coords)
-        while not HasModelLoaded(GetHashKey(npc.ped)) do
-            Wait(500)
+local check = false
+local function TalkNPC(npc)
+    CreateThread(function()
+        check = true
+        while check do
+            if IsControlJustPressed(0, 38) then
+                exports['qb-core']:KeyPressed(38)
+                TriggerEvent('npc-menu:showMenu', npc)
+            end
+            Wait(1)
         end
+    end)
+end
 
-        local npcPed = CreatePed(4, GetHashKey(npc.ped), npc.coords.x, npc.coords.y, npc.coords.z, npc.coords.w, false, false)
-        FreezeEntityPosition(npcPed, true)
-        SetEntityInvincible(npcPed, true)
-        SetBlockingOfNonTemporaryEvents(npcPed, true)
-    end
-end)
+local function CreatePedPoly(npc, key)
+    local v = npc.coords
+    local TalkNPCPoly = {}
+    TalkNPCPoly[#TalkNPCPoly + 1] = BoxZone:Create(vector3(vector3(v.x, v.y, v.z)), 2, 2, {
+        name = 'talkto' .. key,
+        debugPoly = false,
+        heading = -20,
+        minZ = v.z - 2,
+        maxZ = v.z + 2,
+    })
 
-RegisterNetEvent("yazdir", function(text)
-    if not text == nil then
-        print(text)
-    else 
-        print("bos")
-    end
-    
-end)
+    local TalkNPCCombo = ComboZone:Create(TalkNPCPoly, { name = 'signcombo', debugPoly = false })
+    TalkNPCCombo:onPlayerInOut(function(isPointInside)
+        if isPointInside then
+            exports['qb-core']:DrawText(Config.DrawText, 'left')
+            TalkNPC(npc)
+        else
+            check = false
+            exports['qb-core']:HideText()
+        end
+    end)
+
+end
+
+-- Events
 
 RegisterNetEvent("npc-menu:showMenu", function(npc)
     SendNUIMessage({
@@ -70,6 +83,7 @@ RegisterNetEvent("npc-menu:showMenu", function(npc)
     CamCreate(npc.coords)
 end)
 
+-- NUI
 
 RegisterNUICallback("npc-menu:hideMenu", function()
     SetNuiFocus(false, false)
@@ -79,8 +93,6 @@ end)
 RegisterNUICallback("npc-menu:islem", function(data)
 
     SetNuiFocus(false, false)
-    print(data.event, json.encode(data.args), data.type)
-    print(data.type)
     if data.type == 'client' then
         TriggerEvent(data.event, json.encode(data.args))
     elseif data.type == 'server' then
@@ -91,10 +103,41 @@ RegisterNUICallback("npc-menu:islem", function(data)
     DestroyCamera()
 end)
 
+-- Threads
 
-Citizen.CreateThread(function()
+CreateThread(function()
+    for key, npc in ipairs(Config.npcs) do
+        RequestModel(GetHashKey(npc.ped))
+        while not HasModelLoaded(GetHashKey(npc.ped)) do
+            Wait(500)
+        end
+
+        local npcPed = CreatePed(4, GetHashKey(npc.ped), npc.coords.x, npc.coords.y, npc.coords.z, npc.coords.w, false, false)
+        FreezeEntityPosition(npcPed, true)
+        SetEntityInvincible(npcPed, true)
+        SetBlockingOfNonTemporaryEvents(npcPed, true)
+        if Config.UseTarget then
+            HD.Target.AddEntity(npcPed, {
+                Distance = 2.5,
+                Local = true,
+                Options  = {
+                    {
+                        icon  = 'comment-dots',
+                        label = 'Talk '..npc.name,
+                        canInteract = function() return true end,
+                        action = function() TriggerEvent('npc-menu:showMenu', npc) end,
+                    },
+                },
+            })
+        else
+            CreatePedPoly(npc, key)
+        end
+    end
+end)
+
+CreateThread(function()
     while true do
-        Citizen.Wait(0)
+        Wait(0)
         local playerPed = PlayerPedId()
 
         for _, npc in ipairs(Config.npcs) do
