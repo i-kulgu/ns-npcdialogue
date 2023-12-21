@@ -3,7 +3,7 @@ game "gta5"
 
 author 'berxt.ogg & torpak.'
 description 'NP Inspired Dialogue by Nexus | https://discord.gg/j87NTfVGQX'
-version '0.5.0'
+version '0.5.2'
 
 ui_page "ui/index.html"
 files {

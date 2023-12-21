@@ -12,7 +12,6 @@ local function GetOffsetFromCoordsAndHeading(coords, heading, offsetX, offsetY, 
         coords.z + z,
         heading
     )
-
     return worldCoords
 end
 
@@ -80,6 +79,7 @@ RegisterNetEvent("npc-menu:showMenu", function(npc)
         text = npc.text,
         job = npc.job
     })
+    SetNuiFocus(true, true)
     CamCreate(npc.coords)
 end)
 
@@ -91,7 +91,6 @@ RegisterNUICallback("npc-menu:hideMenu", function()
 end)
 
 RegisterNUICallback("npc-menu:islem", function(data)
-
     SetNuiFocus(false, false)
     if data.type == 'client' then
         TriggerEvent(data.event, json.encode(data.args))
@@ -134,29 +133,3 @@ CreateThread(function()
         end
     end
 end)
-
-CreateThread(function()
-    while true do
-        Wait(0)
-        local playerPed = PlayerPedId()
-
-        for _, npc in ipairs(Config.npcs) do
-            local coords = GetEntityCoords(playerPed, false)
-            local distance = GetDistanceBetweenCoords(coords, npc.coords.x, npc.coords.y, npc.coords.z, true)
-
-            if distance < 1.5 then
-                DisplayHelpText("E tuşuna basarak etkileşime geç")
-                if IsControlJustPressed(0, 38) then -- E tuşuna basıldığında
-                    TriggerEvent("npc-menu:showMenu", npc)
-                    SetNuiFocus(true, true)
-                end
-            end
-        end
-    end
-end)
-
-function DisplayHelpText(text)
-    SetTextComponentFormat("STRING")
-    AddTextComponentString(text)
-    DisplayHelpTextFromStringLabel(0, 0, 1, -1)
-end
